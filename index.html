@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edabos Widget</title>
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Variables ── */
+    :root {
+      --primary: #ACACF1;
+      --text: #111111;
+      --white: #ffffff;
+      --radius: 16px;
+      --shadow: 0 8px 32px rgba(0,0,0,.18);
+    }
+
+    /* ── Bouton flottant ── */
+    #edabos-toggle {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: var(--white);
+      font-size: 22px;
+      font-weight: 700;
+      font-family: system-ui, sans-serif;
+      border: none;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+    #edabos-toggle:hover { transform: scale(1.08); box-shadow: 0 12px 36px rgba(0,0,0,.22); }
+
+    /* ── Widget ── */
+    #edabos-widget {
+      position: fixed;
+      bottom: 96px;
+      right: 24px;
+      width: 360px;
+      height: 540px;
+      border-radius: var(--radius);
+      background: var(--white);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      z-index: 9998;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(12px) scale(.97);
+      transition: opacity .25s ease, transform .25s ease;
+    }
+    #edabos-widget.open {
+      opacity: 1;
+      pointer-events: all;
+      transform: translateY(0) scale(1);
+    }
+
+    /* ── Header ── */
+    #edabos-header {
+      background: var(--primary);
+      color: var(--white);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    #edabos-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    #edabos-header-info { flex: 1; }
+    #edabos-header-name { font-weight: 600; font-size: 15px; }
+    #edabos-header-status { font-size: 12px; opacity: .82; margin-top: 1px; }
+    #edabos-close {
+      background: none;
+      border: none;
+      color: var(--white);
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+      opacity: .8;
+      padding: 4px;
+      transition: opacity .15s;
+    }
+    #edabos-close:hover { opacity: 1; }
+
+    /* ── Messages ── */
+    #edabos-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 14px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scroll-behavior: smooth;
+    }
+    #edabos-messages::-webkit-scrollbar { width: 4px; }
+    #edabos-messages::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
+
+    .msg-row {
+      display: flex;
+      flex-direction: column;
+      max-width: 82%;
+    }
+    .msg-row.bot { align-self: flex-start; align-items: flex-start; }
+    .msg-row.user { align-self: flex-end; align-items: flex-end; }
+
+    .bubble {
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .bubble a { color: inherit; text-decoration: underline; }
+    .msg-row.bot .bubble {
+      background: var(--white);
+      border: 1px solid #e4e4f0;
+      border-radius: 4px 14px 14px 14px;
+      color: var(--text);
+    }
+    .msg-row.user .bubble {
+      background: var(--primary);
+      color: var(--white);
+      border-radius: 14px 4px 14px 14px;
+    }
+
+    .timestamp {
+      font-size: 10px;
+      color: #aaa;
+      margin-top: 3px;
+      padding: 0 2px;
+    }
+
+    /* ── Typing indicator ── */
+    .typing-bubble {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 12px 14px;
+    }
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #b0b0c8;
+      animation: bounce .9s infinite ease-in-out;
+    }
+    .dot:nth-child(2) { animation-delay: .15s; }
+    .dot:nth-child(3) { animation-delay: .3s; }
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-5px); }
+    }
+
+    /* ── Quick replies ── */
+    #edabos-quick {
+      padding: 0 14px 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    .qr-btn {
+      background: var(--white);
+      border: 1.5px solid var(--primary);
+      color: var(--primary);
+      border-radius: 20px;
+      padding: 6px 13px;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .qr-btn:hover { background: var(--primary); color: var(--white); }
+
+    /* ── Input zone ── */
+    #edabos-input-zone {
+      padding: 10px 14px 6px;
+      border-top: 1px solid #ececf4;
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+    #edabos-input {
+      flex: 1;
+      border: 1.5px solid #e0e0ef;
+      border-radius: 22px;
+      padding: 9px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      line-height: 1.4;
+      max-height: 100px;
+      overflow-y: auto;
+      color: var(--text);
+      transition: border-color .15s;
+    }
+    #edabos-input:focus { border-color: var(--primary); }
+    #edabos-input::placeholder { color: #bbb; }
+    #edabos-send {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--primary);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background .15s, transform .15s;
+    }
+    #edabos-send:hover { background: #9898e0; transform: scale(1.06); }
+    #edabos-send svg { width: 18px; height: 18px; fill: var(--white); }
+    #edabos-send:disabled { background: #d0d0e8; cursor: not-allowed; transform: none; }
+
+    /* ── Footer ── */
+    #edabos-footer {
+      text-align: center;
+      font-size: 11px;
+      color: #bbb;
+      padding: 5px 0 9px;
+      flex-shrink: 0;
+      letter-spacing: .02em;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 420px) {
+      #edabos-widget {
+        width: calc(100vw - 16px);
+        right: 8px;
+        bottom: 84px;
+        height: calc(100dvh - 100px);
+        max-height: 600px;
+      }
+      #edabos-toggle { right: 16px; bottom: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     CONFIGURATION — modifie uniquement ici
+═══════════════════════════════════════ -->
+<script>
+  const CALENDLY = "https://calendly.com/Edabos/30min";
+</script>
+
+<!-- ═══════════════ HTML ═══════════════ -->
+
+<!-- Bouton flottant -->
+<button id="edabos-toggle" aria-label="Ouvrir le chat Edabos">E</button>
+
+<!-- Widget -->
+<div id="edabos-widget" role="dialog" aria-label="Chat Edabos">
+
+  <!-- Header -->
+  <div id="edabos-header">
+    <div id="edabos-avatar">E</div>
+    <div id="edabos-header-info">
+      <div id="edabos-header-name">Edabos</div>
+      <div id="edabos-header-status">Assistant IA · En ligne</div>
+    </div>
+    <button id="edabos-close" aria-label="Fermer">&#x2715;</button>
+  </div>
+
+  <!-- Messages -->
+  <div id="edabos-messages"></div>
+
+  <!-- Quick replies -->
+  <div id="edabos-quick"></div>
+
+  <!-- Input -->
+  <div id="edabos-input-zone">
+    <textarea
+      id="edabos-input"
+      rows="1"
+      placeholder="Écris ton message…"
+      aria-label="Message"
+    ></textarea>
+    <button id="edabos-send" aria-label="Envoyer">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 21l21-9L2 3v7l15 2-15 2z"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Footer -->
+  <div id="edabos-footer">Propulsé par HARIA</div>
+
+</div>
+
+<!-- ═══════════════ SCRIPT ═══════════════ -->
+<script>
+(function () {
+  /* ─── State ─── */
+  const history = [];
+  let isOpen = false;
+  let isTyping = false;
+  let opened = false;
+  let awaitingCallConfirm = false;
+
+  /* ─── DOM refs ─── */
+  const toggle   = document.getElementById('edabos-toggle');
+  const widget   = document.getElementById('edabos-widget');
+  const closeBtn = document.getElementById('edabos-close');
+  const messages = document.getElementById('edabos-messages');
+  const quick    = document.getElementById('edabos-quick');
+  const input    = document.getElementById('edabos-input');
+  const sendBtn  = document.getElementById('edabos-send');
+
+  /* ─── Helpers ─── */
+  function now() {
+    return new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function scrollBottom() {
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function markdownToHtml(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
+  }
+
+  function addMessage(role, text) {
+    const row = document.createElement('div');
+    row.className = 'msg-row ' + role;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = markdownToHtml(text);
+
+    const ts = document.createElement('div');
+    ts.className = 'timestamp';
+    ts.textContent = now();
+
+    row.appendChild(bubble);
+    row.appendChild(ts);
+    messages.appendChild(row);
+    scrollBottom();
+    return row;
+  }
+
+  function showTyping() {
+    const row = document.createElement('div');
+    row.className = 'msg-row bot';
+    row.id = 'typing-indicator';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble typing-bubble';
+    bubble.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+
+    row.appendChild(bubble);
+    messages.appendChild(row);
+    scrollBottom();
+  }
+
+  function hideTyping() {
+    const el = document.getElementById('typing-indicator');
+    if (el) el.remove();
+  }
+
+  function setQuickReplies(buttons) {
+    quick.innerHTML = '';
+    buttons.forEach(function(label) {
+      const btn = document.createElement('button');
+      btn.className = 'qr-btn';
+      btn.textContent = label;
+      btn.addEventListener('click', function() {
+        if (isTyping) return;
+        quick.innerHTML = '';
+        sendMessage(label);
+      });
+      quick.appendChild(btn);
+    });
+  }
+
+  /* ─── Quick reply detection ─── */
+  function detectQuickReplies(botText) {
+    if (awaitingCallConfirm) {
+      return ['Je suis partant', 'Pas pour l\'instant'];
+    }
+    var lower = botText.toLowerCase();
+    var blocageKw = ['bloqué', 'blocage', 'bloquer', 'problème', 'difficulté', 'frein'];
+    var expKw = ['expérience', 'déjà essayé', 'boutique active', 'débutant', 'niveau'];
+
+    if (blocageKw.some(function(k){ return lower.indexOf(k) !== -1; })) {
+      return ['Le produit', 'La boutique', "La peur d'échouer", 'Autre'];
+    }
+    if (expKw.some(function(k){ return lower.indexOf(k) !== -1; })) {
+      return ['Débutant complet', "J'ai déjà essayé", "J'ai une boutique active"];
+    }
+    return [];
+  }
+
+  /* ─── API call ─── */
+  function callAPI(userText) {
+    isTyping = true;
+    sendBtn.disabled = true;
+
+    history.push({ role: 'user', content: userText });
+    showTyping();
+
+    fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: history.slice() })
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('API ' + res.status);
+      return res.json();
+    })
+    .then(function(data) {
+      var botText = data.text;
+
+      hideTyping();
+      addMessage('bot', botText);
+      history.push({ role: 'assistant', content: botText });
+
+      var lower = botText.toLowerCase();
+      var isCallProposal = (
+        lower.indexOf('vive voix') !== -1 ||
+        lower.indexOf('échange rapide') !== -1 ||
+        lower.indexOf('moment pour en parler') !== -1 ||
+        (lower.indexOf('prendre un') !== -1 && lower.indexOf('appel') !== -1)
+      );
+
+      if (isCallProposal) {
+        awaitingCallConfirm = true;
+        setQuickReplies(['Je suis partant', 'Pas pour l\'instant']);
+      } else {
+        var qr = detectQuickReplies(botText);
+        setQuickReplies(qr);
+      }
+    })
+    .catch(function() {
+      hideTyping();
+      addMessage('bot', 'Une erreur est survenue. Tu peux prendre rendez-vous directement ici : [' + CALENDLY + '](' + CALENDLY + ')');
+    })
+    .finally(function() {
+      isTyping = false;
+      sendBtn.disabled = false;
+    });
+  }
+
+  /* ─── Send message ─── */
+  function sendMessage(text) {
+    text = text.trim();
+    if (!text || isTyping) return;
+
+    addMessage('user', text);
+    quick.innerHTML = '';
+
+    if (awaitingCallConfirm) {
+      awaitingCallConfirm = false;
+      if (text === 'Je suis partant') {
+        var reply = 'Ok top, je te laisse me dire quel moment te convient le plus juste [ici](' + CALENDLY + ')';
+        history.push({ role: 'user', content: text });
+        history.push({ role: 'assistant', content: reply });
+        addMessage('bot', reply);
+        return;
+      }
+      if (text === 'Pas pour l\'instant') {
+        var reply2 = "Pas de souci. N'hésite pas à revenir quand tu veux.";
+        history.push({ role: 'user', content: text });
+        history.push({ role: 'assistant', content: reply2 });
+        addMessage('bot', reply2);
+        return;
+      }
+    }
+
+    callAPI(text);
+  }
+
+  /* ─── Input auto-resize ─── */
+  input.addEventListener('input', function() {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 100) + 'px';
+  });
+
+  /* ─── Send on Enter ─── */
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      var val = input.value;
+      input.value = '';
+      input.style.height = 'auto';
+      sendMessage(val);
+    }
+  });
+
+  sendBtn.addEventListener('click', function() {
+    var val = input.value;
+    input.value = '';
+    input.style.height = 'auto';
+    sendMessage(val);
+  });
+
+  /* ─── Open / close ─── */
+  toggle.addEventListener('click', function() {
+    isOpen = !isOpen;
+    widget.classList.toggle('open', isOpen);
+    toggle.setAttribute('aria-expanded', String(isOpen));
+
+    if (isOpen && !opened) {
+      opened = true;
+      setTimeout(function() {
+        addMessage('bot', "Bonjour, je suis l'assistant Edabos. Comment puis-je t'aider ?");
+        setQuickReplies(["J'ai une boutique", 'Je veux me lancer', "J'ai des questions"]);
+      }, 400);
+    }
+
+    if (isOpen) {
+      setTimeout(function() { input.focus(); }, 300);
+    }
+  });
+
+  closeBtn.addEventListener('click', function() {
+    isOpen = false;
+    widget.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+  });
+
+})();
+</script>
+</body>
+</html>
