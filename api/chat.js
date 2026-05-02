@@ -1,12 +1,4 @@
-require('dotenv').config();
-const express = require('express');
 const OpenAI = require('openai');
-const path = require('path');
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const SYSTEM_PROMPT = `# RÔLE
 
@@ -153,26 +145,27 @@ Tu es là pour clarifier, filtrer, orienter.
 Si ça ressemble à une discussion LinkedIn intelligente → c'est parfait.
 Si ça commence à tourner en rond → tu recentres ou tu conclus.`;
 
-// CORS
-app.use(function(req, res, next) {
+module.exports = async function handler(req, res) {
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
-  next();
-});
 
-// Middleware
-app.use(express.json());
-app.use(express.static(path.join(__dirname)));
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
 
-// POST /chat
-app.post('/chat', async (req, res) => {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Méthode non autorisée.' });
+  }
+
   const { messages } = req.body;
 
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'Le champ "messages" est requis et doit être un tableau.' });
   }
+
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
   try {
     const completion = await openai.chat.completions.create({
@@ -185,17 +178,9 @@ app.post('/chat', async (req, res) => {
     });
 
     const text = completion.choices[0].message.content.trim();
-    res.json({ text });
+    return res.status(200).json({ text });
   } catch (err) {
     console.error('Erreur OpenAI:', err.message);
-    res.status(500).json({ error: "Erreur lors de l'appel à l'API OpenAI." });
+    return res.status(500).json({ error: "Erreur lors de l'appel à l'API OpenAI." });
   }
-});
-
-// app.listen est désactivé pour Vercel (fonctions serverless).
-// Pour un usage local uniquement :
-if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Serveur démarré sur http://localhost:${PORT}`);
-  });
-}
+};

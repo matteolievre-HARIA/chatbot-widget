@@ -2,7 +2,7 @@
   'use strict';
 
   /* ─── Configuration ─── */
-  var API_URL      = 'http://localhost:3000/chat';
+  var API_URL      = '/api/chat';
   var CALENDLY_URL = 'https://calendly.com/Edabos/30min';
 
   /* ─── Shadow DOM container ─── */
