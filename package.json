@@ -2,10 +2,10 @@
   "name": "edabos-chatbot-widget",
   "version": "1.0.0",
   "description": "Backend proxy pour le widget chatbot Edabos",
-  "main": "api/chat.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node server.local.js",
-    "dev": "node --watch server.local.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
