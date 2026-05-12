@@ -8,7 +8,7 @@
   /* ─── Shadow DOM container ─── */
   var host = document.createElement('div');
   host.id = 'edabos-widget-host';
-  host.style.cssText = 'all:unset;position:fixed;bottom:0;right:0;z-index:2147483647;';
+  host.style.cssText = 'position:fixed;bottom:0;right:0;z-index:2147483647;pointer-events:none;';
   document.body.appendChild(host);
 
   var shadow = host.attachShadow({ mode: 'open' });
@@ -30,6 +30,7 @@
     '  --radius:  16px;',
     '  --shadow:  0 8px 32px rgba(0,0,0,.18);',
     '  font-family: system-ui, -apple-system, sans-serif;',
+    '  pointer-events: auto;',
     '}',
 
     /* Toggle button */
